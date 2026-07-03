@@ -1,0 +1,35 @@
+version: "3.9"
+services:
+  neuraflow-api:
+    build: .
+    ports: ["8000:8000"]
+    env_file: .env
+    environment:
+      - REDIS_URL=redis://redis:6379
+    depends_on: [redis]
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  redis:
+    image: redis:7-alpine
+    ports: ["6379:6379"]
+    command: redis-server --appendonly yes --maxmemory 512mb --maxmemory-policy allkeys-lru
+    volumes: [redis_data:/data]
+
+  prometheus:
+    image: prom/prometheus:latest
+    ports: ["9090:9090"]
+    volumes: ["./infra/prometheus.yml:/etc/prometheus/prometheus.yml"]
+
+  grafana:
+    image: grafana/grafana:latest
+    ports: ["3000:3000"]
+    environment: [GF_SECURITY_ADMIN_PASSWORD=neuraflow]
+    depends_on: [prometheus]
+
+volumes:
+  redis_data:
